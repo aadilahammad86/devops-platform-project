@@ -1,43 +1,56 @@
 // worker.js
+require("dotenv").config();
 const redis = require("redis");
 
 async function startWorker() {
-  const client = redis.createClient({
+  const redisConfig = {
     url: `redis://${process.env.REDIS_HOST || "localhost"}:${process.env.REDIS_PORT || 6379}`,
-  });
+  };
 
-  client.on("error", (err) => {
-    console.error("Redis Client Error", err.message);
-  });
+  // We need two clients because brPop blocks the connection.
+  // One client will handle the worker loop, and another will handle heartbeats.
+  const heartbeatClient = redis.createClient(redisConfig);
+  const workerClient = redis.createClient(redisConfig);
 
-  await client.connect();
+  heartbeatClient.on("error", (err) => console.error("Heartbeat Redis Error", err.message));
+  workerClient.on("error", (err) => console.error("Worker Redis Error", err.message));
 
-  console.log("Worker connected to Redis");
+  try {
+    await Promise.all([heartbeatClient.connect(), workerClient.connect()]);
+    console.log("Worker connected to Redis");
+  } catch (err) {
+    console.error("Failed to connect to Redis:", err.message);
+    process.exit(1);
+  }
+  
+  // immediate heartbeat to indicate worker is alive on startup
+  await heartbeatClient.setEx("worker_alive", 10, "1");
+  
+  setInterval(async () => {
+    try {
+      await heartbeatClient.setEx("worker_alive", 10, "1");
+    } catch (err) {
+      console.error("Heartbeat failed:", err.message);
+    }
+  }, 2000);
 
   while (true) {
     try {
-      setInterval(async () => {
-        try {
-          await client.set("worker_alive", Date.now().toString());
-        } catch (err) {
-          console.error("Heartbeat failed:", err.message);
-        }
-      }, 2000);
-
-      while (true) {
-        const job = await client.brPop("jobs", 0);
-        if (job) {
-          console.log("Processing job:", job);
-        } else { 
-          await new Promise(res => setTimeout(res, 1000));
-        }
+      // brPop blocks the connection until a job is available
+      const job = await workerClient.brPop("jobs", 0);
+      if (job) {
+        console.log("Processing job:", job);
+        // Add job processing logic here
       }
-      
     } catch (err) {
       console.error("Worker error:", err.message);
+      // Wait a bit before retrying on error
       await new Promise(res => setTimeout(res, 5000));
     }
   }
 }
 
-startWorker();
+startWorker().catch(err => {
+  console.error("Fatal worker error:", err);
+  process.exit(1);
+});
