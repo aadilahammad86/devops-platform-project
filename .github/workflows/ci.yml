@@ -38,7 +38,8 @@ jobs:
         run: |
           cd worker
           npm test
-            - name: Build Docker Image (API)
+
+      - name: Build Docker Image (API)
         run: |
           docker build -t devops-api ./api
 
