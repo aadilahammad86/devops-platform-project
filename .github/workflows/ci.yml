@@ -64,7 +64,7 @@ jobs:
           push: true
           tags: ghcr.io/${{ github.repository }}/worker:latest
       
-      deploy:
+  deploy:
     needs: build-and-test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/feature/recovery-scaling'
