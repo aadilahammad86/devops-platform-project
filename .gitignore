@@ -1,3 +1,4 @@
 **/node_modules/
 .env
 **/*.log
+devops_learning_tracker.md
