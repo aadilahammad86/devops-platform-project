@@ -2,6 +2,22 @@
 require("dotenv").config();
 const redis = require("redis");
 
+const express = require('express');
+const client = require('prom-client');
+const collectDefaultMetrics = client.collectDefaultMetrics;
+collectDefaultMetrics({ register: client.register });
+
+const app = express();
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', client.register.contentType);
+  res.end(await client.register.metrics());
+});
+
+const METRICS_PORT = process.env.METRICS_PORT || 5000;
+app.listen(METRICS_PORT, () => {
+  console.log(`Worker metrics server listening on port ${METRICS_PORT}`);
+});
+
 async function startWorker() {
   const redisConfig = {
     url: `redis://${process.env.REDIS_HOST || "localhost"}:${process.env.REDIS_PORT || 6379}`,
@@ -22,10 +38,10 @@ async function startWorker() {
     console.error("Failed to connect to Redis:", err.message);
     process.exit(1);
   }
-  
+
   // immediate heartbeat to indicate worker is alive on startup
   await heartbeatClient.setEx("worker_alive", 10, "1");
-  
+
   setInterval(async () => {
     try {
       await heartbeatClient.setEx("worker_alive", 10, "1");
