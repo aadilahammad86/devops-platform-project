@@ -2,7 +2,7 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ develop, master, feature/add-docker-build, feature/add-image-push ]
+    branches: [ develop, master, feature/automated-deploy ]
   pull_request:
     branches: [ develop, master ]
 
