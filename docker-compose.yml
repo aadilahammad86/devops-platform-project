@@ -3,9 +3,10 @@
 services:
 
   api:
-    build: ./api
+    # build: ./api
+    image: ghcr.io/aadilahammad86/devops-platform-project/api:latest
     env_file:
-      - ./api/.env
+      - .env
     environment:
       DB_HOST: ${DB_HOST:-postgres}
       DB_USER: ${DB_USER:-postgres}
@@ -27,9 +28,10 @@ services:
     # debug via chrome using "chrome://inspect"
 
   worker:
-    build: ./worker
+    # build: ./worker
+    image: ghcr.io/aadilahammad86/devops-platform-project/worker:latest
     env_file:
-      - ./worker/.env
+      - .env
     environment:
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
