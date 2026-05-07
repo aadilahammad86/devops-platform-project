@@ -69,26 +69,19 @@ jobs:
     runs-on: self-hosted
     if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/feature/recovery-scaling'
     steps:
-      - name: Deploy to VM via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VM_IP }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            # Check if project exists, if not clone it
-            if [ ! -d "~/devops-platform-project" ]; then
-              git clone https://github.com/${{ github.repository }}.git ~/devops-platform-project
-            fi
-            
-            cd ~/devops-platform-project
-            git fetch --all
-            git checkout ${{ github.ref_name }}
-            git pull origin ${{ github.ref_name }}
-            
-            # Login to registry on the VM
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
-            # Update the stack
-            docker compose pull
-            docker compose up -d
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
+        
+      - name: Login to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Deploy with Docker Compose
+        run: |
+          docker compose pull
+          docker compose up -d
+        
